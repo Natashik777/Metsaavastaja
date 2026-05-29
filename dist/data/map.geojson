@@ -1,0 +1,131 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Harju",
+        "forest_coverage_2020": 44,
+        "forest_coverage_2023": 47,
+        "forest_coverage_2026": 51
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [23.7, 59.05],
+            [25.45, 59.05],
+            [25.45, 59.72],
+            [23.7, 59.72],
+            [23.7, 59.05]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Laane-Viru",
+        "forest_coverage_2020": 48,
+        "forest_coverage_2023": 50,
+        "forest_coverage_2026": 53
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [25.45, 58.9],
+            [27.2, 58.9],
+            [27.2, 59.65],
+            [25.45, 59.65],
+            [25.45, 58.9]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Ida-Viru",
+        "forest_coverage_2020": 43,
+        "forest_coverage_2023": 45,
+        "forest_coverage_2026": 47
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [27.2, 58.9],
+            [28.3, 58.9],
+            [28.3, 59.55],
+            [27.2, 59.55],
+            [27.2, 58.9]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Parnu",
+        "forest_coverage_2020": 51,
+        "forest_coverage_2023": 52,
+        "forest_coverage_2026": 55
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [23.4, 57.7],
+            [25.0, 57.7],
+            [25.0, 58.55],
+            [23.4, 58.55],
+            [23.4, 57.7]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Tartu",
+        "forest_coverage_2020": 46,
+        "forest_coverage_2023": 49,
+        "forest_coverage_2026": 52
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [25.8, 57.75],
+            [27.5, 57.75],
+            [27.5, 58.65],
+            [25.8, 58.65],
+            [25.8, 57.75]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Voru",
+        "forest_coverage_2020": 42,
+        "forest_coverage_2023": 44,
+        "forest_coverage_2026": 46
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [26.4, 57.35],
+            [27.8, 57.35],
+            [27.8, 57.95],
+            [26.4, 57.95],
+            [26.4, 57.35]
+          ]
+        ]
+      }
+    }
+  ]
+}

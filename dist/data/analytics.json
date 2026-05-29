@@ -1,0 +1,44 @@
+[
+  {
+    "year": 2020,
+    "co2_capture": 4500,
+    "harvesting": 1200,
+    "reforestation": 900
+  },
+  {
+    "year": 2021,
+    "co2_capture": 4300,
+    "harvesting": 1400,
+    "reforestation": 950
+  },
+  {
+    "year": 2022,
+    "co2_capture": 4100,
+    "harvesting": 1600,
+    "reforestation": 1100
+  },
+  {
+    "year": 2023,
+    "co2_capture": 3900,
+    "harvesting": 1800,
+    "reforestation": 1200
+  },
+  {
+    "year": 2024,
+    "co2_capture": 4200,
+    "harvesting": 1500,
+    "reforestation": 1400
+  },
+  {
+    "year": 2025,
+    "co2_capture": 4600,
+    "harvesting": 1100,
+    "reforestation": 1700
+  },
+  {
+    "year": 2026,
+    "co2_capture": 4900,
+    "harvesting": 950,
+    "reforestation": 1950
+  }
+]
