@@ -25,7 +25,7 @@ npm install
 
 ### 3. Generate forest overlay images (optional)
 
-If you have the source shapefiles, you can generate the forest overlay WebP images used by the map. Place your shapefiles in the `shapefiles/` directory organised by year:
+If you have the source shapefiles, you can generate the forest overlay WebP images used by the map. Place your shapefiles in a `shapefiles/` directory organised by year:
 
 ```
 shapefiles/
@@ -43,10 +43,10 @@ pip install geopandas rasterio pillow matplotlib pyproj
 Run the image generation script:
 
 ```bash
-python scripts/generate_images.py
+python generate_images.py
 ```
 
-Output images will be written to `public/images/webp/` and `public/images/tif/`.
+Output images will be written to `output/webp/` and `output/tif/`.
 
 ### 4. Start the development server
 
@@ -77,7 +77,7 @@ npm run preview
 │   ├── data/           # GeoJSON county boundaries and analytics JSON
 │   └── images/         # Generated forest overlay WebP images (by year)
 ├── scripts/
-│   └── generate_images.py  # Python script for generating WebP overlays
+│   └── generate_rastermap_layers.py  # Python script for generating WebP overlays
 ├── src/
 │   ├── components/     # React components
 │   │   ├── ForestMap.jsx
