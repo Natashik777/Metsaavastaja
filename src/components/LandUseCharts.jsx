@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArcElement,
   BarController,
@@ -405,15 +405,66 @@ function ForestCompositionChart({ county, year }) {
 
 function LandUseCharts({ selectedCounty, currentYear }) {
   const titleRegion = getCountyDisplayName(selectedCounty);
+  const [showInfo, setShowInfo] = useState(false);
+
+  const [infoContent, setInfoContent] = useState(null);
+
+  useEffect(() => {
+    fetch('/data/info.json')
+      .then(r => r.json())
+      .then(setInfoContent);
+  }, []);
+
 
   return (
     <aside className="relative z-20 flex w-full flex-col border-t border-[#d8cbb1] bg-[white] text-[#3D4A50] shadow-2xl shadow-slate-950/20 lg:h-screen lg:w-[550px] lg:min-w-[420px] lg:max-w-[600px] lg:border-l lg:border-t-0">
       <header className="border-b border-[#d8cbb1] px-5 py-4">
-        {/* <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8DA101]">
-          Metsaavastaja graafikud
-        </p> */}
-        <h2 className="mt-1 text-2xl font-bold tracking-tight">{titleRegion}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="mt-1 text-2xl font-bold tracking-tight">{titleRegion}</h2>
+          <button
+            className="rounded-full p-1.5 text-[#8DA101] transition-all duration-200 hover:bg-[#8DA101]/10"
+            type="button"
+            onClick={() => setShowInfo(true)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          </button>
+        </div>
       </header>
+
+      {showInfo && (
+        <div className="absolute inset-0 z-50 flex flex-col bg-white">
+          <div className="flex items-center justify-between border-b border-[#d8cbb1] px-5 py-4">
+            <h2 className="mt-1 text-2xl font-bold tracking-tight">{infoContent?.title}</h2>
+            <button
+              className="rounded-full p-1.5 text-[#8DA101] transition-all duration-200 hover:bg-[#8DA101]/10"
+              type="button"
+              onClick={() => setShowInfo(false)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            {infoContent?.sections.map((section) => (
+              <div key={section.header} className="mb-6">
+                <h3 className="mb-2 text-base font-bold text-[#3D4A50]">{section.header}</h3>
+                <div className="text-sm leading-7 text-[#3D4A50]">
+                  {section.content.includes('\n')
+                    ? section.content.split('\n').map((line, i) => <p key={i}>{line}</p>)
+                    : <p>{section.content}</p>
+                  }
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <ForestAreaChart county={selectedCounty} year={currentYear} />

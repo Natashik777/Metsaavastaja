@@ -1,0 +1,25 @@
+{
+  "title": "Info",
+  "sections": [
+    {
+      "header": "Metsamaa",
+      "content": "Eesti on Euroopa üks metsarikkamaid riike — rohkem kui pool maismaa pindalast katab mets. Statistikaameti definitsiooni järgi on metsamaa puittaimestiku kasvukoht: vähemalt 0,1 hektari suuruse pindalaga maatükk, millel kasvavate puittaimede kõrgus on vähemalt 1,3 meetrit ja puuvõrade liitus vähemalt 30%. Metsamaa hulka loetakse ka ajutiselt metsata alad — raiesmikud, tormiheite- ja põlenud alad. Metsamaa pindala ja selle muutus maakonniti on nähtav esimesel graafikul."
+    },
+    {
+      "header": "Raie ja metsauuendus",
+      "content": "Raie ja uuendamine on kaks poolt samast mündist — üks võtab, teine annab tagasi. Raiedokumentidel põhinevad andmed pärinevad Statistikaameti tabelist MM04 ning uuendamise andmed tabelist MM10. Metsauuendamine hõlmab kolme viisi: metsa istutamine, metsakülv ning looduslikule uuendamisele kaasaaitamine — maapinna ettevalmistamine, seemnepuude jätmine ja muud võtted. Raie ja uuendamise võrdlus maakonniti on nähtav kolmandal graafikul."
+    },
+    {
+      "header": "Puuliigid",
+      "content": "Igal puuliigil on oma iseloom, kasvutempo ja roll metsaökosüsteemis. Enamuspuuliigiks loetakse valitsevat puuliiki, millel on puistus suurim tüvemaht. Eesti metsade põhilised puuliigid on mänd, kuusk, kask, haab, sanglepp ja hall lepp, ning nende osakaal varieerub maakonniti ja ajas. Puuliikide koosseis on kujutatud neljandal graafikul ning hinnangud põhinevad Metsa Aastaraamatutel."
+    },
+    {
+        "header": "Süsiniku sidumine",
+        "content": "Mets on üks tõhusamaid looduslikke süsiniku sidujaid, mida me teame. Käesolevas lahenduses kajastuvad süsiniku siduvuse andmed on hinnatud Keskkonnaagentuuri metsastatistikast ning on esitatud kilotonnides CO₂ aastas maakonna kohta. Väärtused on nähtavad viimases graafikul."
+    },
+    {
+        "header": "Allikad ja viited",
+        "content": "Eesti metsa aastaraamatud: https://keskkonnaportaal.ee/et/metsa-aastaraamatud.\nStatistikaamet, tabelid KK51, MM04, MM10 — andmed.stat.ee.\nSMI metaandmed ja mõisted — stat.ee/et/metaandmed/21001 "
+    }
+  ]
+}
