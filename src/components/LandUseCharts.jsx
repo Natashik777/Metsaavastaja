@@ -84,6 +84,27 @@ const tooltipBase = {
   cornerRadius: 6,
 };
 
+const chartAnimation = { duration: 800, easing: 'easeOutQuart' };
+
+function applyChartConfig(chart, nextConfig) {
+  chart.data.labels = nextConfig.data.labels;
+  chart.data.datasets.length = nextConfig.data.datasets.length;
+
+  nextConfig.data.datasets.forEach((nextDataset, index) => {
+    if (!chart.data.datasets[index]) {
+      chart.data.datasets[index] = nextDataset;
+      return;
+    }
+
+    Object.assign(chart.data.datasets[index], nextDataset);
+  });
+
+  chart.options.animation = nextConfig.options.animation;
+  chart.options.plugins = nextConfig.options.plugins;
+  chart.options.scales = nextConfig.options.scales;
+  chart.update('default');
+}
+
 const scaleX = (rotate = false) => ({
   grid: { display: false },
   border: { display: true, color: C.greyDark },
@@ -104,17 +125,29 @@ function useChart(configFactory, deps) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
 
-  useEffect(() => () => chartRef.current?.destroy(), []);
+  useEffect(
+    () => () => {
+      chartRef.current?.destroy();
+      chartRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!canvasRef.current) {
       return undefined;
     }
 
-    chartRef.current?.destroy();
-    chartRef.current = new Chart(canvasRef.current, configFactory());
+    const nextConfig = configFactory();
 
-    return () => chartRef.current?.destroy();
+    if (!chartRef.current) {
+      chartRef.current = new Chart(canvasRef.current, nextConfig);
+      return undefined;
+    }
+
+    applyChartConfig(chartRef.current, nextConfig);
+
+    return undefined;
   }, deps);
 
   return canvasRef;
@@ -160,7 +193,7 @@ function ForestAreaChart({ county, year }) {
         ],
       },
       options: {
-        animation: { duration: 300 },
+        animation: chartAnimation,
         maintainAspectRatio: false,
         responsive: true,
         plugins: {
@@ -208,7 +241,7 @@ function ForestShareChart({ county, year }) {
         ],
       },
       options: {
-        animation: { duration: 300 },
+        animation: chartAnimation,
         cutout: '62%',
         maintainAspectRatio: false,
         responsive: true,
@@ -266,7 +299,7 @@ function HarvestChart({ county, year }) {
         ],
       },
       options: {
-        animation: { duration: 300 },
+        animation: chartAnimation,
         maintainAspectRatio: false,
         responsive: true,
         plugins: {

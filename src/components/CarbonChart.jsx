@@ -49,19 +49,48 @@ const verticalLinePlugin = {
 
 Chart.register(verticalLinePlugin);
 
+const chartAnimation = { duration: 800, easing: 'easeOutQuart' };
+
+function applyChartConfig(chart, nextConfig) {
+  chart.data.labels = nextConfig.data.labels;
+  chart.data.datasets.length = nextConfig.data.datasets.length;
+
+  nextConfig.data.datasets.forEach((nextDataset, index) => {
+    if (!chart.data.datasets[index]) {
+      chart.data.datasets[index] = nextDataset;
+      return;
+    }
+
+    Object.assign(chart.data.datasets[index], nextDataset);
+  });
+
+  chart.options.animation = nextConfig.options.animation;
+  chart.options.plugins = nextConfig.options.plugins;
+  chart.options.scales = nextConfig.options.scales;
+  chart.update('default');
+}
+
 function CarbonChart({ year }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
 
-  useEffect(() => () => chartRef.current?.destroy(), []);
+  useEffect(
+    () => () => {
+      chartRef.current?.destroy();
+      chartRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
+    if (!canvasRef.current) {
+      return undefined;
+    }
+
     const timeline = getCarbonTimeline();
     const labels = timeline.map((item) => String(item.year));
     const currentIndex = labels.indexOf(String(year));
-
-    chartRef.current?.destroy();
-    chartRef.current = new Chart(canvasRef.current, {
+    const nextConfig = {
       type: 'line',
       data: {
         labels,
@@ -100,7 +129,7 @@ function CarbonChart({ year }) {
         ],
       },
       options: {
-        animation: { duration: 300 },
+        animation: chartAnimation,
         maintainAspectRatio: false,
         responsive: true,
         plugins: {
@@ -135,9 +164,16 @@ function CarbonChart({ year }) {
           },
         },
       },
-    });
+    };
 
-    return () => chartRef.current?.destroy();
+    if (!chartRef.current) {
+      chartRef.current = new Chart(canvasRef.current, nextConfig);
+      return undefined;
+    }
+
+    applyChartConfig(chartRef.current, nextConfig);
+
+    return undefined;
   }, [year]);
 
   return (
