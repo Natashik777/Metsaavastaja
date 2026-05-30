@@ -1,349 +1,265 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
-import { GeoJSON, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import { getForestCoverage } from '../lib/forestData.js';
+import React, { useEffect, useRef } from 'react';
+import maplibregl from 'maplibre-gl';
+import { Protocol } from 'pmtiles';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
-const INITIAL_MAP_CENTER = [58.65, 25.35];
-const INITIAL_MAP_ZOOM = 7.49;
-const COUNTY_RENDERER = L.svg({
-  padding: 0.5,
-});
-function getCoverageColor(coverage) {
-  if (coverage > 50) {
-    return '#065f46';
-  }
-
-  if (coverage >= 45) {
-    return '#10b981';
-  }
-
-  return '#d97706';
-}
-
-function getCountyStyle(feature, year, isSelected = false) {
-  const countyName = feature.properties?.MNIMI ?? '';
-  const coverage = getForestCoverage(countyName, year);
-
-  return {
-    className: 'county-region',
-    color: isSelected ? '#064e3b' : '#cbd5e1',
-    fillColor: isSelected ? getCoverageColor(coverage) : '#ffffff',
-    fillOpacity: isSelected ? 0.84 : 1,
-    opacity: 1,
-    weight: isSelected ? 2.8 : 1,
-  };
-}
-
-function setLayerClass(layer, className, shouldAdd) {
-  const element = layer.getElement?.();
-
-  if (element) {
-    element.classList.toggle(className, shouldAdd);
-  }
-}
-
-function blurLayer(layer) {
-  const element = layer.getElement?.();
-
-  if (element && typeof element.blur === 'function') {
-    element.blur();
-  }
-}
-
-function MapInteractionReset({ onClearHover, onClearSelection }) {
-  useMapEvents({
-    click: (event) => {
-      const target = event.originalEvent?.target;
-
-      if (target?.classList?.contains('county-region')) {
-        return;
-      }
-
-      onClearSelection();
-    },
-    mouseout: onClearHover,
-  });
-
-  return null;
-}
-
-function MapCameraController({ selectedBounds }) {
-  const map = useMap();
-  const hasMountedRef = useRef(false);
-
-  useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      return;
-    }
-
-    if (selectedBounds) {
-      map.flyToBounds(selectedBounds, {
-        padding: [50, 50],
-        duration: 1.2,
-      });
-      return;
-    }
-
-    map.flyTo(INITIAL_MAP_CENTER, INITIAL_MAP_ZOOM, {
-      duration: 1.2,
-    });
-  }, [map, selectedBounds]);
-
-  return null;
-}
-
-function MapRedrawController({ geoJsonLayerRef }) {
-  const map = useMap();
-
-  useEffect(() => {
-    function redrawLayer() {
-      geoJsonLayerRef.current?.eachLayer?.((layer) => {
-        layer.redraw?.();
-      });
-      map.invalidateSize({ animate: false });
-    }
-
-    map.on('moveend zoomend resize', redrawLayer);
-
-    return () => {
-      map.off('moveend zoomend resize', redrawLayer);
-    };
-  }, [geoJsonLayerRef, map]);
-
-  return null;
-}
+const FOREST_IMAGE_COORDS = [
+  [21.774546, 59.684934], // top-left
+  [28.207891, 59.684934], // top-right
+  [28.207891, 57.509352], // bottom-right
+  [21.774546, 57.509352], // bottom-left
+];
 
 function ForestMap({ year, onCountySelect }) {
-  const [geoData, setGeoData] = useState(null);
-  const [status, setStatus] = useState('loading');
-  const [isLayerReady, setIsLayerReady] = useState(false);
-  const [selectedBounds, setSelectedBounds] = useState(null);
-  const selectedLayerRef = useRef(null);
-  const hoveredLayerRef = useRef(null);
-  const isPopupPinnedRef = useRef(false);
-  const geoJsonLayerRef = useRef(null);
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const selectedCountyRef = useRef(null);
+  const imageCacheRef = useRef(new Map());
+  const currentForestLayerRef = useRef({ layerId: 'forest-layer', sourceId: 'forest' });
 
-  const clearHoveredLayer = useMemo(
-    () => () => {
-      const hoveredLayer = hoveredLayerRef.current;
+  async function loadImage(year) {
+    if (imageCacheRef.current.has(year)) {
+      return imageCacheRef.current.get(year);
+    }
+    const response = await fetch(`/images/${year}.webp`);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    imageCacheRef.current.set(year, url);
+    return url;
+  }
 
-      if (!hoveredLayer) {
-        return;
-      }
+  async function animateYears(years, onYearChange, delayMs = 800) {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
 
-      setLayerClass(hoveredLayer, 'county-region--hovered', false);
+    for (const year of years) {
+      if (!isAnimatingRef.current) break;
 
-      if (selectedLayerRef.current === hoveredLayer) {
-        hoveredLayer.setStyle(getCountyStyle(hoveredLayer.feature, year, true));
-        setLayerClass(hoveredLayer, 'county-region--selected', true);
-      } else {
-        hoveredLayer.setStyle(getCountyStyle(hoveredLayer.feature, year));
+      // Preload the image first
+      await loadImage(year);
 
-        if (!isPopupPinnedRef.current) {
-          hoveredLayer.closePopup();
-        }
-      }
+      // Switch to this year
+      onYearChange(year);
 
-      hoveredLayerRef.current = null;
-    },
-    [year],
-  );
+      // Wait for the map to finish rendering the new layer
+      await new Promise((resolve) => {
+        const map = mapRef.current;
+        if (!map) return resolve();
 
-  const clearSelectedLayer = useMemo(
-    () => () => {
-      const selectedLayer = selectedLayerRef.current;
+        const onIdle = () => {
+          map.off('idle', onIdle);
+          resolve();
+        };
 
-      if (!selectedLayer) {
-        isPopupPinnedRef.current = false;
-        onCountySelect?.(null);
-        return;
-      }
+        map.once('idle', onIdle);
 
-      setLayerClass(selectedLayer, 'county-region--selected', false);
-      setLayerClass(selectedLayer, 'county-region--hovered', false);
-      blurLayer(selectedLayer);
-      selectedLayer.setStyle(getCountyStyle(selectedLayer.feature, year));
-      selectedLayer.closePopup();
-      selectedLayerRef.current = null;
-      hoveredLayerRef.current = null;
-      setSelectedBounds(null);
-      isPopupPinnedRef.current = false;
-      onCountySelect?.(null);
-    },
-    [onCountySelect, year],
-  );
+        // Fallback in case idle never fires
+        setTimeout(resolve, 2000);
+      });
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadGeoData() {
-      try {
-        setStatus('loading');
-        setIsLayerReady(false);
-
-        const response = await fetch('/data/maakond.json');
-
-        if (!response.ok) {
-          throw new Error('Unable to load county boundaries.');
-        }
-
-        const data = await response.json();
-
-        if (isMounted) {
-          setGeoData(data);
-          setStatus('ready');
-        }
-      } catch (error) {
-        console.error(error);
-
-        if (isMounted) {
-          setStatus('error');
-        }
-      }
+      // Hold on this year before moving to next
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
 
-    loadGeoData();
+    isAnimatingRef.current = false;
+  }
+
+  function stopAnimation() {
+    isAnimatingRef.current = false;
+  }
+
+  // Initialise map once
+  useEffect(() => {
+    const protocol = new Protocol();
+    maplibregl.addProtocol('pmtiles', protocol.tile);
+
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: {
+        version: 8,
+        sources: {
+          'carto-basemap': {
+            type: 'raster',
+            tiles: ['https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png'],
+            tileSize: 256,
+          },
+          'forest': {
+            type: 'image',
+            url: '/images/2026.webp',
+            coordinates: FOREST_IMAGE_COORDS,
+          },
+          'counties': {
+            type: 'geojson',
+            data: '/data/maakond.geojson',
+          },
+        },
+        layers: [
+          {
+            id: 'basemap',
+            type: 'raster',
+            source: 'carto-basemap',
+          },
+          {
+            id: 'forest-layer',
+            type: 'raster',
+            source: 'forest',
+            paint: { 'raster-opacity': 0.8 },
+          },
+          {
+            id: 'counties-fill',
+            type: 'fill',
+            source: 'counties',
+            paint: {
+              'fill-color': [
+                'case',
+                ['==', ['get', 'MKOOD'], selectedCountyRef.current ?? ''],
+                'rgba(0,0,0,0.15)',
+                'rgba(0,0,0,0)',
+              ],
+            },
+          },
+          {
+            id: 'counties-line',
+            type: 'line',
+            source: 'counties',
+            paint: {
+              'line-color': '#333',
+              'line-width': 1,
+            },
+          },
+          {
+            id: 'counties-hover',
+            type: 'fill',
+            source: 'counties',
+            paint: { 'fill-color': 'rgba(0,0,0,0.1)' },
+            filter: ['==', 'MKOOD', ''],
+          },
+        ],
+      },
+      center: [24.75, 58.75],
+      zoom: 6.5,
+      dragPan: false,
+      keyboard: false,
+    });
+
+    mapRef.current = map;
+
+    map.on('load', () => {
+      // Preload all years in the background
+      const YEARS = Array.from({ length: 2026 - 2009 + 1 }, (_, i) => 2009 + i);
+      YEARS.forEach((y) => loadImage(y));
+
+      const resetView = () => {
+        selectedCountyRef.current = null;
+        onCountySelect?.(null);
+        map.setPaintProperty('counties-fill', 'fill-color', [
+          'case',
+          ['==', ['get', 'MKOOD'], ''],
+          'rgba(0,0,0,0.15)',
+          'rgba(0,0,0,0)',
+        ]);
+        map.setFilter('counties-hover', ['==', 'MKOOD', '']);
+        map.flyTo({ center: [24.75, 58.75], zoom: 6.5, duration: 500 });
+      };
+
+      map.on('mousemove', 'counties-fill', (e) => {
+        if (e.features.length > 0) {
+          map.setFilter('counties-hover', ['==', 'MKOOD', e.features[0].properties.MKOOD]);
+          map.getCanvas().style.cursor = 'pointer';
+        }
+      });
+
+      map.on('mouseleave', 'counties-fill', () => {
+        map.setFilter('counties-hover', ['==', 'MKOOD', '']);
+        map.getCanvas().style.cursor = '';
+      });
+
+      map.on('click', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['counties-fill'] });
+
+        if (features.length === 0) {
+          resetView();
+          return;
+        }
+
+        const feature = features[0];
+        const { MKOOD: mkood, MNIMI: mnimi } = feature.properties;
+
+        if (selectedCountyRef.current === mkood) {
+          resetView();
+          return;
+        }
+
+        selectedCountyRef.current = mkood;
+        onCountySelect?.(mnimi);
+
+        map.setPaintProperty('counties-fill', 'fill-color', [
+          'case',
+          ['==', ['get', 'MKOOD'], mkood],
+          'rgba(0,0,0,0.15)',
+          'rgba(0,0,0,0)',
+        ]);
+
+        const bounds = new maplibregl.LngLatBounds();
+        const coords =
+          feature.geometry.type === 'MultiPolygon'
+            ? feature.geometry.coordinates.flat(2)
+            : feature.geometry.coordinates.flat(1);
+        coords.forEach(([lng, lat]) => bounds.extend([lng, lat]));
+        map.fitBounds(bounds, { padding: 80, duration: 500 });
+      });
+    });
 
     return () => {
-      isMounted = false;
+      map.remove();
+      imageCacheRef.current.forEach((url) => URL.revokeObjectURL(url));
+      imageCacheRef.current.clear();
     };
   }, []);
 
+  // Swap forest image when year changes
   useEffect(() => {
-    clearHoveredLayer();
-    selectedLayerRef.current = null;
-    isPopupPinnedRef.current = false;
-    setSelectedBounds(null);
-    onCountySelect?.(null);
-    setIsLayerReady(false);
-  }, [clearHoveredLayer, onCountySelect, year]);
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
 
-  const styleFeature = useMemo(
-    () => (feature) => getCountyStyle(feature, year),
-    [year],
-  );
+    const newSourceId = `forest-${year}`;
+    const newLayerId = `forest-layer-${year}`;
 
-  const bindCountyPopup = useMemo(
-    () => (feature, layer) => {
-      const countyName = feature.properties?.MNIMI ?? 'Tundmatu maakond';
-      const coverage = getForestCoverage(countyName, year);
+    loadImage(year).then((url) => {
+      // Image is already decoded in cache, add source and layer
+      if (!map.getSource(newSourceId)) {
+        map.addSource(newSourceId, {
+          type: 'image',
+          url,
+          coordinates: FOREST_IMAGE_COORDS,
+        });
 
-      layer.bindPopup(`
-        <div class="county-popup">
-          <p class="county-popup__eyebrow">Metsasus</p>
-          <p><strong>Maakond:</strong> ${countyName}</p>
-          <p><strong>Metsasus:</strong> ${coverage}%</p>
-        </div>
-      `);
-      layer.on({
-        mouseover: () => {
-          if (hoveredLayerRef.current !== layer) {
-            clearHoveredLayer();
-          }
+        map.addLayer(
+          {
+            id: newLayerId,
+            type: 'raster',
+            source: newSourceId,
+            paint: { 'raster-opacity': 0.8 },
+          },
+          'counties-fill',
+        );
+      }
 
-          hoveredLayerRef.current = layer;
-          layer.setStyle({
-            color: '#064e3b',
-            fillColor: getCoverageColor(coverage),
-            fillOpacity: 0.84,
-            weight: selectedLayerRef.current === layer ? 3.2 : 2.8,
-          });
-          setLayerClass(layer, 'county-region--hovered', true);
-          layer.bringToFront();
-
-          if (!isPopupPinnedRef.current || selectedLayerRef.current === layer) {
-            layer.openPopup();
-          }
-        },
-        mouseout: () => {
-          if (hoveredLayerRef.current === layer) {
-            clearHoveredLayer();
-          }
-        },
-        click: (event) => {
-          event.originalEvent?.stopPropagation();
-
-          if (selectedLayerRef.current === layer) {
-            clearSelectedLayer();
-            return;
-          }
-
-          if (selectedLayerRef.current && selectedLayerRef.current !== layer) {
-            setLayerClass(selectedLayerRef.current, 'county-region--selected', false);
-            selectedLayerRef.current.setStyle(styleFeature(selectedLayerRef.current.feature));
-            selectedLayerRef.current.closePopup();
-          }
-
-          selectedLayerRef.current = layer;
-          isPopupPinnedRef.current = true;
-          setSelectedBounds(layer.getBounds());
-          onCountySelect?.(countyName);
-          layer.setStyle(getCountyStyle(feature, year, true));
-          setLayerClass(layer, 'county-region--selected', true);
-          layer.bringToFront();
-          layer.openPopup();
-        },
+      // Remove old layer after adding new one
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const { layerId, sourceId } = currentForestLayerRef.current;
+          if (map.getLayer(layerId)) map.removeLayer(layerId);
+          if (map.getSource(sourceId)) map.removeSource(sourceId);
+          currentForestLayerRef.current = { layerId: newLayerId, sourceId: newSourceId };
+        });
       });
-    },
-    [clearHoveredLayer, clearSelectedLayer, onCountySelect, styleFeature, year],
-  );
+    });
+  }, [year]);
 
   return (
     <div className="relative h-full min-h-[680px] lg:min-h-0">
-      <MapContainer
-        center={INITIAL_MAP_CENTER}
-        zoom={INITIAL_MAP_ZOOM}
-        zoomSnap={0.1}
-        zoomDelta={0.25}
-        minZoom={6}
-        maxZoom={10}
-        scrollWheelZoom
-        className="z-0"
-      >
-        <MapInteractionReset
-          onClearHover={clearHoveredLayer}
-          onClearSelection={clearSelectedLayer}
-        />
-        <MapCameraController selectedBounds={selectedBounds} />
-        <MapRedrawController geoJsonLayerRef={geoJsonLayerRef} />
-
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          className="map-basemap-tiles"
-          url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
-        />
-
-        {geoData && (
-          <GeoJSON
-            key={year}
-            ref={geoJsonLayerRef}
-            data={geoData}
-            eventHandlers={{
-              add: () => setIsLayerReady(true),
-            }}
-            renderer={COUNTY_RENDERER}
-            style={styleFeature}
-            onEachFeature={bindCountyPopup}
-          />
-        )}
-      </MapContainer>
-
-      {status !== 'error' && (status === 'loading' || !isLayerReady) && (
-        <div className="absolute inset-0 z-[500] grid place-items-center bg-white/90 backdrop-blur-sm">
-          <div className="rounded-2xl border border-slate-200 bg-white/90 px-5 py-4 text-sm text-slate-700 shadow-lg">
-            Laadin kaarti ja maakonnakihte...
-          </div>
-        </div>
-      )}
-
-      {status === 'error' && (
-        <div className="absolute inset-0 z-[500] grid place-items-center bg-white/90 backdrop-blur-sm">
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
-            Faili <span className="font-mono">/data/maakond.json</span> laadimine ebaõnnestus.
-          </div>
-        </div>
-      )}
+      <div ref={containerRef} className="h-full w-full" />
     </div>
   );
 }

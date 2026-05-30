@@ -21,6 +21,8 @@ import {
   getTreeComposition,
 } from '../lib/forestData.js';
 
+import CarbonChart from './CarbonChart.jsx';
+
 Chart.register(
   LineElement,
   PointElement,
@@ -47,7 +49,7 @@ const C = {
   grey: '#A6B0A0',
   greyDark: '#3D4A50',
   fg: '#5C6A72',
-  bg: '#F3EAD3',
+  bg: 'white',
   card: '#FFFBEF',
 };
 
@@ -84,6 +86,25 @@ const tooltipBase = {
   cornerRadius: 6,
 };
 
+function applyChartConfig(chart, nextConfig) {
+  chart.data.labels = nextConfig.data.labels;
+  chart.data.datasets.length = nextConfig.data.datasets.length;
+
+  nextConfig.data.datasets.forEach((nextDataset, index) => {
+    if (!chart.data.datasets[index]) {
+      chart.data.datasets[index] = nextDataset;
+      return;
+    }
+
+    Object.assign(chart.data.datasets[index], nextDataset);
+  });
+
+  chart.options.animation = nextConfig.options.animation;
+  chart.options.plugins = nextConfig.options.plugins;
+  chart.options.scales = nextConfig.options.scales;
+  chart.update('default');
+}
+
 const scaleX = (rotate = false) => ({
   grid: { display: false },
   border: { display: true, color: C.greyDark },
@@ -104,29 +125,38 @@ function useChart(configFactory, deps) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
 
-  useEffect(() => () => chartRef.current?.destroy(), []);
+  useEffect(
+    () => () => {
+      chartRef.current?.destroy();
+      chartRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!canvasRef.current) {
       return undefined;
     }
 
-    chartRef.current?.destroy();
-    chartRef.current = new Chart(canvasRef.current, configFactory());
+    const nextConfig = configFactory();
 
-    return () => chartRef.current?.destroy();
+    if (!chartRef.current) {
+      chartRef.current = new Chart(canvasRef.current, nextConfig);
+      return undefined;
+    }
+
+    applyChartConfig(chartRef.current, nextConfig);
+
+    return undefined;
   }, deps);
 
   return canvasRef;
 }
 
-function ChartShell({ title, subtitle, children }) {
+function ChartShell({ title, children }) {
   return (
-    <section className="rounded-xl border border-[#d8cbb1] bg-[#fffbef] p-4 shadow-[0_16px_40px_rgba(61,74,80,0.12)]">
+    <section className="rounded-xl border border-[#d8cbb1] bg-[white] p-4 shadow-[0_16px_40px_rgba(61,74,80,0.12)]">
       <div className="mb-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8DA101]">
-          {subtitle}
-        </p>
         <h3 className="mt-1 text-[17px] font-semibold text-[#3D4A50]">{title}</h3>
       </div>
       {children}
@@ -183,7 +213,7 @@ function ForestAreaChart({ county, year }) {
   );
 
   return (
-    <ChartShell subtitle={getCountyDisplayName(county)} title="Metsamaa pindala">
+    <ChartShell title="Metsamaa pindala">
       <div className="h-[210px]">
         <canvas ref={canvasRef} />
       </div>
@@ -227,7 +257,7 @@ function ForestShareChart({ county, year }) {
   );
 
   return (
-    <ChartShell subtitle={`${row?.year ?? year}`} title="Metsasus">
+    <ChartShell title="Metsasus">
       <div className="relative h-[180px]">
         <canvas ref={canvasRef} />
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -291,7 +321,7 @@ function HarvestChart({ county, year }) {
   );
 
   return (
-    <ChartShell subtitle={getCountyDisplayName(county)} title="Raie ja uuendamine">
+    <ChartShell title="Raie ja uuendamine">
       <div className="h-[220px]">
         <canvas ref={canvasRef} />
       </div>
@@ -354,7 +384,7 @@ function ForestCompositionChart({ county, year }) {
   const composition = getTreeComposition(county, year).slice(0, 6);
 
   return (
-    <ChartShell subtitle={`${year}`} title="Metsade liigiline koosseis">
+    <ChartShell title="Metsade liigiline koosseis">
       <div className="flex items-end justify-between gap-2 overflow-hidden pt-1">
         {composition.map((item) => (
           <TreeIcon item={item} key={item.key} />
@@ -368,11 +398,11 @@ function LandUseCharts({ selectedCounty, currentYear }) {
   const titleRegion = getCountyDisplayName(selectedCounty);
 
   return (
-    <aside className="relative z-20 flex w-full flex-col border-t border-[#d8cbb1] bg-[#F3EAD3] text-[#3D4A50] shadow-2xl shadow-slate-950/20 lg:h-screen lg:w-[460px] lg:min-w-[420px] lg:max-w-[500px] lg:border-l lg:border-t-0">
+    <aside className="relative z-20 flex w-full flex-col border-t border-[#d8cbb1] bg-[white] text-[#3D4A50] shadow-2xl shadow-slate-950/20 lg:h-screen lg:w-[550px] lg:min-w-[420px] lg:max-w-[600px] lg:border-l lg:border-t-0">
       <header className="border-b border-[#d8cbb1] px-5 py-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8DA101]">
+        {/* <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8DA101]">
           Metsaavastaja graafikud
-        </p>
+        </p> */}
         <h2 className="mt-1 text-2xl font-bold tracking-tight">{titleRegion}</h2>
       </header>
 
@@ -381,6 +411,7 @@ function LandUseCharts({ selectedCounty, currentYear }) {
         <ForestShareChart county={selectedCounty} year={currentYear} />
         <HarvestChart county={selectedCounty} year={currentYear} />
         <ForestCompositionChart county={selectedCounty} year={currentYear} />
+        <CarbonChart county={selectedCounty} year={currentYear} />
       </div>
     </aside>
   );

@@ -1,0 +1,29 @@
+:root {
+    --foreground:           #D3C6AA;
+    --red:                  #E67E80;
+    --yellow:               #DBBC7F;
+    --green:                #A7C080;
+    --blue:                 #7FBBB3;
+    --purple:               #D699B6;
+    --aqua:                 #83C092;
+    --orange:               #E69875;
+    --statusline-1:         #A7C080;
+    --statusline-2:         #D3C6AA;
+    --statusline-3:         #E67E80;
+    --grey-0:               #7A8478;
+    --grey-1:               #859289;
+    --grey-2:               #9DA9A0;
+    --background-dim:       #293136;
+    --background-0:         #333C43;
+    --background-1:         #3A464C;
+    --background-2:         #434F55;
+    --background-3:         #4D5960;
+    --background-4:         #555F66;
+    --background-5:         #5D6B66;
+    --background-red:       #59464C;
+    --background-yellow:    #55544A;
+    --background-green:     #48584E;
+    --background-blue:      #3F5865;
+    --background-purple:    #4E4953;
+    --background-visual:    #5C3F4F;
+}
