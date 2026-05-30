@@ -167,6 +167,174 @@ function ChartShell({ title, subtitle, children }) {
   );
 }
 
+function getReadyAirStations(stations) {
+  return stations.filter((station) => Number.isFinite(station.aqi));
+}
+
+function getAqiColor(aqi) {
+  if (aqi <= 50) return C.green;
+  if (aqi <= 100) return C.yellow;
+  if (aqi <= 150) return '#F97316';
+  if (aqi <= 200) return C.red;
+  if (aqi <= 300) return C.purple;
+  return '#7F1D1D';
+}
+
+function getMetricAverage(stations, key) {
+  const values = stations
+    .map((station) => Number(station.metrics?.[key]))
+    .filter((value) => Number.isFinite(value));
+
+  if (!values.length) {
+    return null;
+  }
+
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function AirAqiChart({ stations }) {
+  const readyStations = getReadyAirStations(stations);
+  const labels = readyStations.map((station) => station.name);
+  const canvasRef = useChart(
+    () => ({
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'AQI',
+            data: readyStations.map((station) => station.aqi),
+            backgroundColor: readyStations.map((station) => getAqiColor(station.aqi)),
+            borderRadius: 6,
+          },
+        ],
+      },
+      options: {
+        animation: chartAnimation,
+        maintainAspectRatio: false,
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...tooltipBase,
+            callbacks: {
+              label: (ctx) => ` AQI: ${Math.round(ctx.parsed.y)}`,
+            },
+          },
+        },
+        scales: {
+          x: scaleX(true),
+          y: scaleY({ callback: (value) => Math.round(value) }),
+        },
+      },
+    }),
+    [stations],
+  );
+
+  return (
+    <ChartShell subtitle="Eesti mõõtepunktid" title="AQI linnade kaupa">
+      <div className="h-[220px]">
+        <canvas ref={canvasRef} />
+      </div>
+    </ChartShell>
+  );
+}
+
+function AirPollutantsChart({ stations }) {
+  const readyStations = getReadyAirStations(stations);
+  const metrics = [
+    ['PM10', 'pm10'],
+    ['PM2.5', 'pm25'],
+    ['O3', 'o3'],
+    ['NO2', 'no2'],
+    ['SO2', 'so2'],
+    ['CO', 'co'],
+  ]
+    .map(([label, key]) => ({ label, value: getMetricAverage(readyStations, key) }))
+    .filter((item) => item.value != null);
+  const canvasRef = useChart(
+    () => ({
+      type: 'bar',
+      data: {
+        labels: metrics.map((item) => item.label),
+        datasets: [
+          {
+            label: 'Keskmine',
+            data: metrics.map((item) => item.value),
+            backgroundColor: [C.green, C.blue, C.yellow, C.purple, C.red, C.grey],
+            borderRadius: 6,
+          },
+        ],
+      },
+      options: {
+        animation: chartAnimation,
+        maintainAspectRatio: false,
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...tooltipBase,
+            callbacks: {
+              label: (ctx) => ` ${ctx.parsed.y.toLocaleString('et-EE', { maximumFractionDigits: 1 })}`,
+            },
+          },
+        },
+        scales: {
+          x: scaleX(),
+          y: scaleY({ callback: (value) => Number(value).toLocaleString('et-EE') }),
+        },
+      },
+    }),
+    [stations],
+  );
+
+  return (
+    <ChartShell subtitle="Mõõtepunktide keskmine" title="Saasteained">
+      <div className="h-[210px]">
+        <canvas ref={canvasRef} />
+      </div>
+    </ChartShell>
+  );
+}
+
+function AirStationsTable({ stations }) {
+  const readyStations = getReadyAirStations(stations);
+
+  return (
+    <ChartShell subtitle="Andmed uuenevad kord tunnis" title="Mõõtepunktid">
+      <div className="grid gap-2">
+        {readyStations.map((station) => (
+          <div
+            className="flex items-center justify-between rounded-lg border border-[#d8cbb1] bg-[#F3EAD3]/55 px-3 py-2"
+            key={station.name}
+          >
+            <span className="text-sm font-semibold text-[#3D4A50]">{station.name}</span>
+            <span
+              className="rounded-md px-2 py-1 text-sm font-bold text-[#fffbef]"
+              style={{ backgroundColor: getAqiColor(station.aqi) }}
+            >
+              {Math.round(station.aqi)}
+            </span>
+          </div>
+        ))}
+        {!readyStations.length && (
+          <p className="text-sm leading-6 text-[#5C6A72]">Õhuandmeid laaditakse...</p>
+        )}
+      </div>
+    </ChartShell>
+  );
+}
+
+function AirQualityCharts({ stations }) {
+  return (
+    <>
+      <AirAqiChart stations={stations} />
+      <AirPollutantsChart stations={stations} />
+      <AirStationsTable stations={stations} />
+    </>
+  );
+}
+
 function ForestAreaChart({ county, year }) {
   const timeline = getForestTimeline(county);
   const labels = timeline.map((item) => String(item.year));
@@ -397,23 +565,32 @@ function ForestCompositionChart({ county, year }) {
   );
 }
 
-function LandUseCharts({ selectedCounty, currentYear }) {
+function LandUseCharts({ airStations = [], currentYear, mapMode = 'forest', selectedCounty }) {
   const titleRegion = getCountyDisplayName(selectedCounty);
+  const isAirMode = mapMode === 'air';
 
   return (
     <aside className="relative z-20 flex w-full flex-col border-t border-[#d8cbb1] bg-[#F3EAD3] text-[#3D4A50] shadow-2xl shadow-slate-950/20 lg:h-screen lg:w-[460px] lg:min-w-[420px] lg:max-w-[500px] lg:border-l lg:border-t-0">
       <header className="border-b border-[#d8cbb1] px-5 py-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8DA101]">
-          Metsaavastaja graafikud
+          {isAirMode ? 'Õhukvaliteedi graafikud' : 'Metsaavastaja graafikud'}
         </p>
-        <h2 className="mt-1 text-2xl font-bold tracking-tight">{titleRegion}</h2>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight">
+          {isAirMode ? 'Eesti õhk' : titleRegion}
+        </h2>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <ForestAreaChart county={selectedCounty} year={currentYear} />
-        <ForestShareChart county={selectedCounty} year={currentYear} />
-        <HarvestChart county={selectedCounty} year={currentYear} />
-        <ForestCompositionChart county={selectedCounty} year={currentYear} />
+        {isAirMode ? (
+          <AirQualityCharts stations={airStations} />
+        ) : (
+          <>
+            <ForestAreaChart county={selectedCounty} year={currentYear} />
+            <ForestShareChart county={selectedCounty} year={currentYear} />
+            <HarvestChart county={selectedCounty} year={currentYear} />
+            <ForestCompositionChart county={selectedCounty} year={currentYear} />
+          </>
+        )}
       </div>
     </aside>
   );

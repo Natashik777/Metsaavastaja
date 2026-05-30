@@ -14,6 +14,8 @@ import {
 function App() {
   const [currentYear, setCurrentYear] = useState(DEFAULT_DATA_YEAR);
   const [selectedCounty, setSelectedCounty] = useState(null);
+  const [mapMode, setMapMode] = useState('forest');
+  const [airStations, setAirStations] = useState([]);
 
   const selectedForestRow = useMemo(
     () => getForestRow(selectedCounty, currentYear),
@@ -24,6 +26,10 @@ function App() {
     return timeline.find((item) => item.year === currentYear) ?? timeline.at(-1);
   }, [currentYear, selectedCounty]);
   const regionName = getCountyDisplayName(selectedCounty);
+  const mapModes = [
+    { id: 'forest', label: 'Лес' },
+    { id: 'air', label: 'Загрязнение воздуха' },
+  ];
 
   return (
     <main className="min-h-screen bg-[#F3EAD3] text-[#3D4A50] lg:h-screen lg:overflow-hidden">
@@ -77,11 +83,53 @@ function App() {
         </aside>
 
         <section className="relative min-h-[680px] flex-1 overflow-hidden bg-slate-100 lg:h-screen lg:min-h-0">
-          <ForestMap year={currentYear} onCountySelect={setSelectedCounty} />
+          <div className="absolute left-4 right-4 top-4 z-[700] flex items-center justify-between gap-3 rounded-2xl border border-[#d8cbb1] bg-[#fffbef]/92 px-3 py-2 shadow-[0_18px_48px_rgba(61,74,80,0.16)] backdrop-blur-md sm:left-1/2 sm:right-auto sm:w-[560px] sm:-translate-x-1/2">
+            <span className="pl-2 text-xs font-bold uppercase tracking-[0.18em] text-[#5C6A72]">
+              Карта
+            </span>
+            <nav className="flex rounded-xl border border-[#d8cbb1] bg-[#F3EAD3]/80 p-1">
+              {mapModes.map((mode) => {
+                const isActive = mapMode === mode.id;
+
+                return (
+                  <button
+                    className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                      isActive
+                        ? 'bg-[#8DA101] text-[#fffbef] shadow-[0_10px_24px_rgba(141,161,1,0.26)]'
+                        : 'text-[#3D4A50] hover:bg-[#fffbef] hover:text-[#8DA101]'
+                    }`}
+                    key={mode.id}
+                    onClick={() => {
+                      setMapMode(mode.id);
+
+                      if (mode.id === 'air') {
+                        setSelectedCounty(null);
+                      }
+                    }}
+                    type="button"
+                  >
+                    {mode.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          <ForestMap
+            mapMode={mapMode}
+            onAirStationsChange={setAirStations}
+            onCountySelect={setSelectedCounty}
+            year={currentYear}
+          />
           <TimelineSlider currentYear={currentYear} onYearChange={setCurrentYear} />
         </section>
 
-        <LandUseCharts currentYear={currentYear} selectedCounty={selectedCounty} />
+        <LandUseCharts
+          airStations={airStations}
+          currentYear={currentYear}
+          mapMode={mapMode}
+          selectedCounty={selectedCounty}
+        />
       </div>
     </main>
   );
