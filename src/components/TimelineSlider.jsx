@@ -1,40 +1,45 @@
 import React from 'react';
+import { DATA_YEARS } from '../lib/forestData.js';
 
-const YEARS = [2020, 2023, 2026];
+const YEAR_STEP = 1;
 
 function TimelineSlider({ currentYear, onYearChange }) {
+  const minYear = DATA_YEARS[0];
+  const maxYear = DATA_YEARS.at(-1);
+  const progress = ((currentYear - minYear) / (maxYear - minYear)) * 100;
+
   const handleChange = (event) => {
     onYearChange(Number(event.target.value));
   };
 
   return (
-    <div className="absolute bottom-5 left-1/2 z-[600] w-[min(92%,560px)] -translate-x-1/2 rounded-2xl border border-slate-700 bg-slate-900/78 p-4 shadow-2xl shadow-slate-950/50 backdrop-blur-xl transition-all duration-300">
-      <div className="mb-3 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Ajatelg</p>
-          <p className="text-sm font-medium text-white">Metsasuse aasta</p>
-        </div>
-        <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-1.5 text-sm font-semibold text-emerald-200 shadow-glow">
+    <div className="absolute bottom-5 left-1/2 z-[600] w-[min(92%,560px)] -translate-x-1/2 rounded-2xl border border-[#3D4A50] bg-white/86 px-4 pb-4 pt-5 shadow-[0_20px_55px_rgba(61,74,80,0.22)] backdrop-blur-xl transition-all duration-300">
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#9BA7B0]">Ajatelg</p>
+        <span className="rounded-full border border-[#8DA101]/20 bg-[#8DA101]/10 px-4 py-2 text-sm font-semibold text-[#8DA101] shadow-[0_0_28px_rgba(141,161,1,0.18)]">
           {currentYear}
         </span>
       </div>
 
       <input
         aria-label="Vali andmeaasta"
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-700 transition-all duration-300 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-emerald-400"
+        className="timeline-slider__input"
+        style={{ '--slider-progress': `${progress}%` }}
         type="range"
-        min="2020"
-        max="2026"
-        step="3"
+        min={minYear}
+        max={maxYear}
+        step={YEAR_STEP}
         value={currentYear}
         onChange={handleChange}
       />
 
-      <div className="mt-3 flex justify-between text-xs font-medium text-slate-400">
-        {YEARS.map((year) => (
+      <div className="mt-4 flex items-center justify-between text-xs font-semibold text-[#8EA0AF]">
+        {DATA_YEARS.filter((year) => year === minYear || year === currentYear || year === maxYear).map((year) => (
           <button
-            className={`rounded-full px-2 py-1 transition-all duration-300 ${
-              year === currentYear ? 'bg-emerald-400/10 text-emerald-200' : 'hover:text-white'
+            className={`rounded-full px-3 py-1.5 transition-all duration-300 ${
+              year === currentYear
+                ? 'bg-[#8DA101]/10 text-[#8DA101] shadow-[0_0_24px_rgba(141,161,1,0.18)]'
+                : 'hover:bg-[#8DA101]/5 hover:text-[#5C6A72]'
             }`}
             key={year}
             type="button"

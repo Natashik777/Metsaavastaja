@@ -1,98 +1,387 @@
-import React from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import AnimatedCounter from './AnimatedCounter.jsx';
+import React, { useEffect, useRef } from 'react';
+import {
+  ArcElement,
+  BarController,
+  BarElement,
+  CategoryScale,
+  Chart,
+  DoughnutController,
+  Filler,
+  LinearScale,
+  LineController,
+  LineElement,
+  PointElement,
+  Tooltip,
+} from 'chart.js';
+import {
+  getCountyDisplayName,
+  getForestRow,
+  getForestTimeline,
+  getHarvestTimeline,
+  getTreeComposition,
+} from '../lib/forestData.js';
 
-function LandUseTooltip({ active, payload }) {
-  if (!active || !payload?.length) {
-    return null;
-  }
+Chart.register(
+  LineElement,
+  PointElement,
+  LineController,
+  BarElement,
+  BarController,
+  ArcElement,
+  DoughnutController,
+  CategoryScale,
+  LinearScale,
+  Filler,
+  Tooltip,
+);
 
-  const item = payload[0].payload;
+const C = {
+  green: '#8DA101',
+  greenFill: 'rgba(141, 161, 1, 0.1)',
+  red: '#F85552',
+  redFill: 'rgba(248, 85, 82, 0.08)',
+  blue: '#3A94C5',
+  blueFill: 'rgba(58, 148, 197, 0.06)',
+  yellow: '#DFA000',
+  purple: '#DF69BA',
+  grey: '#A6B0A0',
+  greyDark: '#3D4A50',
+  fg: '#5C6A72',
+  bg: '#F3EAD3',
+  card: '#FFFBEF',
+};
+
+const verticalLinePlugin = {
+  id: 'verticalLine',
+  afterDraw(chart, _args, opts) {
+    if (opts.index == null || opts.index < 0) {
+      return;
+    }
+
+    const { ctx, chartArea, scales } = chart;
+    const xPos = scales.x.getPixelForValue(opts.index);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(xPos, chartArea.top);
+    ctx.lineTo(xPos, chartArea.bottom);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = C.red;
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+Chart.register(verticalLinePlugin);
+
+const tooltipBase = {
+  backgroundColor: C.bg,
+  borderColor: C.grey,
+  borderWidth: 1,
+  titleColor: C.fg,
+  bodyColor: C.fg,
+  padding: 10,
+  cornerRadius: 6,
+};
+
+const scaleX = (rotate = false) => ({
+  grid: { display: false },
+  border: { display: true, color: C.greyDark },
+  ticks: {
+    color: C.fg,
+    font: { size: 10 },
+    ...(rotate ? { autoSkip: true, maxRotation: 45, minRotation: 45 } : {}),
+  },
+});
+
+const scaleY = (tickExtra = {}) => ({
+  grid: { color: 'rgba(92, 106, 114, 0.08)', drawTicks: false },
+  border: { display: true, color: C.greyDark },
+  ticks: { color: C.fg, font: { size: 10 }, padding: 6, ...tickExtra },
+});
+
+function useChart(configFactory, deps) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => () => chartRef.current?.destroy(), []);
+
+  useEffect(() => {
+    if (!canvasRef.current) {
+      return undefined;
+    }
+
+    chartRef.current?.destroy();
+    chartRef.current = new Chart(canvasRef.current, configFactory());
+
+    return () => chartRef.current?.destroy();
+  }, deps);
+
+  return canvasRef;
+}
+
+function ChartShell({ title, subtitle, children }) {
+  return (
+    <section className="rounded-xl border border-[#d8cbb1] bg-[#fffbef] p-4 shadow-[0_16px_40px_rgba(61,74,80,0.12)]">
+      <div className="mb-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8DA101]">
+          {subtitle}
+        </p>
+        <h3 className="mt-1 text-[17px] font-semibold text-[#3D4A50]">{title}</h3>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ForestAreaChart({ county, year }) {
+  const timeline = getForestTimeline(county);
+  const labels = timeline.map((item) => String(item.year));
+  const currentIndex = labels.indexOf(String(year));
+  const canvasRef = useChart(
+    () => ({
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Metsamaa pindala',
+            data: timeline.map((item) => item.areaHa),
+            borderColor: C.green,
+            backgroundColor: C.greenFill,
+            borderWidth: 2.5,
+            fill: true,
+            pointBackgroundColor: C.bg,
+            pointBorderColor: C.green,
+            pointBorderWidth: 2,
+            pointRadius: 3,
+            tension: 0.35,
+          },
+        ],
+      },
+      options: {
+        animation: { duration: 300 },
+        maintainAspectRatio: false,
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...tooltipBase,
+            callbacks: {
+              label: (ctx) => ` ${ctx.parsed.y.toLocaleString('et-EE')} ha`,
+            },
+          },
+          verticalLine: { index: currentIndex },
+        },
+        scales: {
+          x: scaleX(true),
+          y: scaleY({ callback: (value) => `${Math.round(value / 1000)}k` }),
+        },
+      },
+    }),
+    [county, year],
+  );
 
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-950/95 px-4 py-3 text-sm text-slate-100 shadow-2xl backdrop-blur-md">
-      <p className="font-semibold" style={{ color: item.color }}>
-        {item.label}
-      </p>
-      <p className="mt-1 text-slate-300">{item.valueKm2.toLocaleString('et-EE')} km²</p>
-      <p className="text-slate-400">{item.percent.toLocaleString('et-EE')}%</p>
+    <ChartShell subtitle={getCountyDisplayName(county)} title="Metsamaa pindala">
+      <div className="h-[210px]">
+        <canvas ref={canvasRef} />
+      </div>
+    </ChartShell>
+  );
+}
+
+function ForestShareChart({ county, year }) {
+  const row = getForestRow(county, year);
+  const forestPct = row?.forestPct ?? 0;
+  const canvasRef = useChart(
+    () => ({
+      type: 'doughnut',
+      data: {
+        labels: ['Metsad', 'Muu'],
+        datasets: [
+          {
+            data: [forestPct, Math.max(0, 100 - forestPct)],
+            backgroundColor: [C.green, C.grey],
+            borderWidth: 0,
+          },
+        ],
+      },
+      options: {
+        animation: { duration: 300 },
+        cutout: '62%',
+        maintainAspectRatio: false,
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...tooltipBase,
+            callbacks: {
+              label: (ctx) => ` ${ctx.label}: ${ctx.parsed.toFixed(1)}%`,
+            },
+          },
+        },
+      },
+    }),
+    [county, year],
+  );
+
+  return (
+    <ChartShell subtitle={`${row?.year ?? year}`} title="Metsasus">
+      <div className="relative h-[180px]">
+        <canvas ref={canvasRef} />
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-2xl font-bold text-[#8DA101]">{forestPct.toFixed(1)}%</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5C6A72]">
+            Metsad
+          </span>
+        </div>
+      </div>
+    </ChartShell>
+  );
+}
+
+function HarvestChart({ county, year }) {
+  const timeline = getHarvestTimeline(county);
+  const labels = timeline.map((item) => String(item.year));
+  const selectedYear = String(year);
+  const canvasRef = useChart(
+    () => ({
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Raie',
+            data: timeline.map((item) => item.harvesting),
+            backgroundColor: labels.map((label) => (label === selectedYear ? C.purple : 'rgba(223, 105, 186, 0.2)')),
+            borderRadius: 5,
+          },
+          {
+            label: 'Uuendamine',
+            data: timeline.map((item) => item.renewal),
+            backgroundColor: labels.map((label) => (label === selectedYear ? C.green : 'rgba(141, 161, 1, 0.2)')),
+            borderRadius: 5,
+          },
+        ],
+      },
+      options: {
+        animation: { duration: 300 },
+        maintainAspectRatio: false,
+        responsive: true,
+        plugins: {
+          legend: {
+            labels: { boxWidth: 10, color: C.fg, font: { size: 11 } },
+            position: 'bottom',
+          },
+          tooltip: {
+            ...tooltipBase,
+            callbacks: {
+              label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('et-EE')} ha`,
+            },
+          },
+        },
+        scales: {
+          x: scaleX(true),
+          y: scaleY({ callback: (value) => `${Math.round(value / 1000)}k` }),
+        },
+      },
+    }),
+    [county, year],
+  );
+
+  return (
+    <ChartShell subtitle={getCountyDisplayName(county)} title="Raie ja uuendamine">
+      <div className="h-[220px]">
+        <canvas ref={canvasRef} />
+      </div>
+    </ChartShell>
+  );
+}
+
+function TreeIcon({ item }) {
+  const maxHeight = 100;
+  const minHeight = 28;
+  const height = minHeight + (Math.min(item.percent, 65) / 65) * (maxHeight - minHeight);
+  const trunkHeight = height * 0.28;
+  const crownHeight = height - trunkHeight;
+  const crownWidth = crownHeight * 0.86;
+  const width = Math.max(crownWidth + 8, 38);
+  const centerX = width / 2;
+  const trunkWidth = Math.max(4, height * 0.07);
+  const isConifer = item.key === 'pine' || item.key === 'spruce';
+
+  return (
+    <div className="flex min-w-[44px] flex-col items-center gap-1">
+      <span className="text-[11px] font-semibold text-[#3D4A50]">{Math.round(item.percent)}%</span>
+      <svg className="block" height={maxHeight + 4} width={width}>
+        <rect
+          fill="#6B5B45"
+          height={trunkHeight}
+          rx="2"
+          width={trunkWidth}
+          x={centerX - trunkWidth / 2}
+          y={maxHeight - trunkHeight}
+        />
+        {isConifer ? (
+          <>
+            <polygon
+              fill={item.color}
+              points={`${centerX},${maxHeight - trunkHeight - crownHeight} ${centerX - crownWidth / 2},${maxHeight - trunkHeight - crownHeight * 0.34} ${centerX + crownWidth / 2},${maxHeight - trunkHeight - crownHeight * 0.34}`}
+            />
+            <polygon
+              fill={item.color}
+              opacity="0.86"
+              points={`${centerX},${maxHeight - trunkHeight - crownHeight * 0.56} ${centerX - crownWidth * 0.62},${maxHeight - trunkHeight - crownHeight * 0.05} ${centerX + crownWidth * 0.62},${maxHeight - trunkHeight - crownHeight * 0.05}`}
+            />
+          </>
+        ) : (
+          <ellipse
+            cx={centerX}
+            cy={maxHeight - trunkHeight - crownHeight * 0.5}
+            fill={item.color}
+            rx={crownWidth / 2}
+            ry={crownHeight / 2}
+          />
+        )}
+      </svg>
+      <span className="text-[11px] text-[#3D4A50]">{item.label}</span>
     </div>
   );
 }
 
-function LandUseCharts({ data, selectedCounty, currentYear }) {
-  const titleRegion = selectedCounty ?? 'Kogu Eesti';
-  const totalKm2 = data.reduce((sum, item) => sum + item.valueKm2, 0);
+function ForestCompositionChart({ county, year }) {
+  const composition = getTreeComposition(county, year).slice(0, 6);
 
   return (
-    <aside className="relative z-20 flex w-full flex-col gap-5 border-t border-slate-800/80 bg-slate-950/96 p-5 shadow-2xl shadow-slate-950/40 lg:h-screen lg:w-[340px] lg:min-w-[320px] lg:max-w-[380px] lg:gap-4 lg:overflow-hidden lg:border-l lg:border-t-0 lg:p-6 xl:w-[380px]">
-      <div className="pointer-events-none absolute inset-x-6 top-0 h-32 rounded-full bg-cyan-500/10 blur-3xl" />
+    <ChartShell subtitle={`${year}`} title="Metsade liigiline koosseis">
+      <div className="flex items-end justify-between gap-2 overflow-hidden pt-1">
+        {composition.map((item) => (
+          <TreeIcon item={item} key={item.key} />
+        ))}
+      </div>
+    </ChartShell>
+  );
+}
 
-      <header className="relative">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">
-          Maakasutus
-        </div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">MAAKASUTUS: {titleRegion}</h2>
-        <p className="mt-2 text-sm leading-5 text-slate-400">
-          Maa struktuur aastal {currentYear}, hinnangulised osakaalud ja pindalad.
+function LandUseCharts({ selectedCounty, currentYear }) {
+  const titleRegion = getCountyDisplayName(selectedCounty);
+
+  return (
+    <aside className="relative z-20 flex w-full flex-col border-t border-[#d8cbb1] bg-[#F3EAD3] text-[#3D4A50] shadow-2xl shadow-slate-950/20 lg:h-screen lg:w-[460px] lg:min-w-[420px] lg:max-w-[500px] lg:border-l lg:border-t-0">
+      <header className="border-b border-[#d8cbb1] px-5 py-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8DA101]">
+          Metsaavastaja graafikud
         </p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight">{titleRegion}</h2>
       </header>
 
-      <section className="relative rounded-2xl border border-slate-700 bg-slate-900/80 p-4 shadow-2xl shadow-slate-950/30 backdrop-blur-md">
-        <div className="absolute left-4 top-4 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-slate-300">
-          <AnimatedCounter value={totalKm2} /> km²
-        </div>
-
-        <div className="h-[250px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Tooltip content={<LandUseTooltip />} />
-              <Pie
-                animationDuration={650}
-                animationEasing="ease-out"
-                data={data}
-                dataKey="percent"
-                innerRadius="58%"
-                outerRadius="82%"
-                paddingAngle={2}
-                stroke="rgba(15, 23, 42, 0.9)"
-                strokeWidth={3}
-              >
-                {data.map((item) => (
-                  <Cell fill={item.color} key={item.key} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      <section className="relative flex min-h-0 flex-1 flex-col gap-2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/80 p-4 backdrop-blur-md">
-        {data.map((item) => (
-          <div
-            className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/35 px-3 py-2.5"
-            key={item.key}
-          >
-            <span
-              className="h-3 w-3 rounded-full shadow-glow"
-              style={{ backgroundColor: item.color }}
-            />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{item.label}</p>
-              <p className="text-xs text-slate-500">
-                <AnimatedCounter value={item.valueHa} /> ha
-              </p>
-            </div>
-            <p className="text-sm font-bold text-slate-100">
-              <AnimatedCounter
-                value={item.percent}
-                formatOptions={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-              />
-              %
-            </p>
-          </div>
-        ))}
-      </section>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <ForestAreaChart county={selectedCounty} year={currentYear} />
+        <ForestShareChart county={selectedCounty} year={currentYear} />
+        <HarvestChart county={selectedCounty} year={currentYear} />
+        <ForestCompositionChart county={selectedCounty} year={currentYear} />
+      </div>
     </aside>
   );
 }

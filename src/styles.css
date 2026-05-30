@@ -30,13 +30,12 @@ body {
 .leaflet-container {
   width: 100%;
   height: 100%;
-  background:
-    radial-gradient(circle at 50% 35%, rgba(15, 118, 110, 0.28), transparent 42%),
-    linear-gradient(135deg, #082f49 0%, #0f172a 52%, #020617 100%);
+  background: #fcfefe;
 }
 
 .map-basemap-tiles {
-  filter: saturate(1.18) brightness(1.16) contrast(0.92) hue-rotate(8deg);
+  filter: grayscale(1) brightness(1.04) contrast(0.92);
+  opacity: 1;
 }
 
 .leaflet-popup-content-wrapper,
@@ -89,24 +88,70 @@ body {
 }
 
 .county-region--hovered {
-  filter: none;
+  filter: drop-shadow(7px 9px 7px rgba(15, 23, 42, 0.28));
 }
 
 .county-region--selected {
-  filter: none;
+  filter: drop-shadow(7px 9px 8px rgba(15, 23, 42, 0.24));
 }
 
 
 .leaflet-control-attribution {
-  background: rgba(15, 23, 42, 0.72) !important;
-  color: #94a3b8 !important;
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.86) !important;
+  color: #475569 !important;
+  backdrop-filter: blur(10px);
 }
 
 .leaflet-control-attribution a {
-  color: #5eead4 !important;
+  color: #047857 !important;
 }
 
-input[type='range'] {
-  accent-color: #10b981;
+.timeline-slider__input {
+  --slider-progress: 0%;
+  appearance: none;
+  background:
+    linear-gradient(#8da101, #8da101) 0 / var(--slider-progress) 100% no-repeat,
+    #35445a;
+  border-radius: 999px;
+  cursor: pointer;
+  display: block;
+  height: 8px;
+  outline: none;
+  width: 100%;
+}
+
+.timeline-slider__input::-webkit-slider-thumb {
+  appearance: none;
+  background: #8da101;
+  border: 0;
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 6px rgba(141, 161, 1, 0.16),
+    0 10px 24px rgba(141, 161, 1, 0.28);
+  height: 20px;
+  width: 20px;
+}
+
+.timeline-slider__input::-moz-range-track {
+  background: #35445a;
+  border: 0;
+  border-radius: 999px;
+  height: 8px;
+}
+
+.timeline-slider__input::-moz-range-progress {
+  background: #8da101;
+  border-radius: 999px;
+  height: 8px;
+}
+
+.timeline-slider__input::-moz-range-thumb {
+  background: #8da101;
+  border: 0;
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 6px rgba(141, 161, 1, 0.16),
+    0 10px 24px rgba(141, 161, 1, 0.28);
+  height: 20px;
+  width: 20px;
 }

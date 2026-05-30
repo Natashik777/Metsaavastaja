@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { GeoJSON, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { getForestCoverage } from '../lib/forestData.js';
 
 const INITIAL_MAP_CENTER = [58.65, 25.35];
 const INITIAL_MAP_ZOOM = 7.49;
-const COUNTY_RENDERER = L.canvas({
+const COUNTY_RENDERER = L.svg({
   padding: 0.5,
 });
 function getCoverageColor(coverage) {
@@ -19,36 +20,17 @@ function getCoverageColor(coverage) {
   return '#d97706';
 }
 
-function hashCountyYear(name, year) {
-  return Array.from(`${name}-${year}`).reduce(
-    (hash, character) => hash + character.charCodeAt(0),
-    0,
-  );
-}
-
-function getForestCoverage(countyName = '', year) {
-  if (countyName.includes('Harju')) {
-    return 45;
-  }
-
-  if (countyName.includes('Rapla')) {
-    return 55;
-  }
-
-  return 35 + (hashCountyYear(countyName, year) % 16);
-}
-
 function getCountyStyle(feature, year, isSelected = false) {
   const countyName = feature.properties?.MNIMI ?? '';
   const coverage = getForestCoverage(countyName, year);
 
   return {
     className: 'county-region',
-    color: isSelected ? '#f8fafc' : '#ecfeff',
-    fillColor: getCoverageColor(coverage),
-    fillOpacity: isSelected ? 0.86 : 0.62,
+    color: isSelected ? '#064e3b' : '#cbd5e1',
+    fillColor: isSelected ? getCoverageColor(coverage) : '#ffffff',
+    fillOpacity: isSelected ? 0.84 : 1,
     opacity: 1,
-    weight: isSelected ? 3 : 1.2,
+    weight: isSelected ? 2.8 : 1,
   };
 }
 
@@ -262,7 +244,8 @@ function ForestMap({ year, onCountySelect }) {
 
           hoveredLayerRef.current = layer;
           layer.setStyle({
-            color: '#ffffff',
+            color: '#064e3b',
+            fillColor: getCoverageColor(coverage),
             fillOpacity: 0.84,
             weight: selectedLayerRef.current === layer ? 3.2 : 2.8,
           });
@@ -328,7 +311,7 @@ function ForestMap({ year, onCountySelect }) {
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
           className="map-basemap-tiles"
-          url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
         />
 
         {geoData && (
@@ -346,19 +329,17 @@ function ForestMap({ year, onCountySelect }) {
         )}
       </MapContainer>
 
-      <div className="pointer-events-none absolute inset-0 z-[400] bg-[radial-gradient(circle_at_58%_42%,rgba(20,184,166,0.2),transparent_28%),radial-gradient(circle_at_22%_28%,rgba(56,189,248,0.18),transparent_32%),linear-gradient(90deg,rgba(2,6,23,0.36),transparent_42%)]" />
-
       {status !== 'error' && (status === 'loading' || !isLayerReady) && (
-        <div className="absolute inset-0 z-[500] grid place-items-center bg-slate-950 backdrop-blur-sm">
-          <div className="rounded-2xl border border-slate-700 bg-slate-900/80 px-5 py-4 text-sm text-slate-300 shadow-glow">
+        <div className="absolute inset-0 z-[500] grid place-items-center bg-white/90 backdrop-blur-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white/90 px-5 py-4 text-sm text-slate-700 shadow-lg">
             Laadin kaarti ja maakonnakihte...
           </div>
         </div>
       )}
 
       {status === 'error' && (
-        <div className="absolute inset-0 z-[500] grid place-items-center bg-slate-950/70 backdrop-blur-sm">
-          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+        <div className="absolute inset-0 z-[500] grid place-items-center bg-white/90 backdrop-blur-sm">
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
             Faili <span className="font-mono">/data/maakond.json</span> laadimine ebaõnnestus.
           </div>
         </div>
