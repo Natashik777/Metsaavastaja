@@ -136,8 +136,8 @@ function ForestMap({ year, onCountySelect }) {
           },
         ],
       },
-      center: [24.75, 58.75],
-      zoom: 6.5,
+      center: [24.75, 58.4],
+      zoom: 7,
       dragPan: false,
       keyboard: false,
       scrollZoom: false
@@ -185,7 +185,7 @@ function ForestMap({ year, onCountySelect }) {
         
         // Scroll up = zoom out to full view
         if (e.deltaY > 0) {
-          map.flyTo({ center: [24.75, 58.75], zoom: 6.5, duration: 500 });
+          map.flyTo({ center: [24.75, 58.4], zoom: 7, duration: 500 });
           return;
         }
 
