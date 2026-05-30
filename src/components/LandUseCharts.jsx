@@ -322,7 +322,16 @@ function HarvestChart({ county, year }) {
 
   return (
     <ChartShell title="Raie ja uuendamine">
-      <div className="h-[220px]">
+      <div className="h-[220px]" style = {{marginBottom : "1.25rem"}}>
+        <div style={{ display: "flex", gap: 16, marginBottom: "0.75rem" }}>
+          {[["Raie", C.purple], ["Taasmetsastamine", C.green]].map(([label, color]) => (
+            <span key={label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.fg }}>
+              <span style={{ width: 12, height: 12, background: color, borderRadius: 2, display: "inline-block" }} />
+              {label}
+            </span>
+          ))}
+          <span style={{ fontSize: 12, color: C.fgLight, marginLeft: 4 }}></span>
+        </div>
         <canvas ref={canvasRef} />
       </div>
     </ChartShell>
