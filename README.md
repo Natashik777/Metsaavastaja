@@ -23,7 +23,32 @@ cd metsaavastaja
 npm install
 ```
 
-### 3. Start the development server
+### 3. Generate forest overlay images (optional)
+
+If you have the source shapefiles, you can generate the forest overlay WebP images used by the map. Place your shapefiles in the `shapefiles/` directory organised by year:
+
+```
+shapefiles/
+  ETAK_EESTI_SHP_2009_01_01.zip
+  ETAK_EESTI_SHP_2010_01_01.zip
+  ...
+```
+
+Install Python dependencies:
+
+```bash
+pip install geopandas rasterio pillow matplotlib pyproj
+```
+
+Run the image generation script:
+
+```bash
+python scripts/generate_images.py
+```
+
+Output images will be written to `public/images/webp/` and `public/images/tif/`.
+
+### 4. Start the development server
 
 ```bash
 npm run dev
