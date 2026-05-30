@@ -2,7 +2,7 @@ import React from 'react';
 //import { DATA_YEARS } from '../lib/forestData.js';
 
 const YEAR_STEP = 1;
-const DATA_YEARS = Array.from({ length: 2026 - 2009 + 1 }, (_, i) => 2009 + i);
+const DATA_YEARS = Array.from({ length: 2025 - 2008 + 1 }, (_, i) => 2008 + i);
 
 function TimelineSlider({ currentYear, onYearChange }) {
   const minYear = DATA_YEARS[0];
@@ -13,7 +13,7 @@ function TimelineSlider({ currentYear, onYearChange }) {
     onYearChange(Number(event.target.value));
   };
   return (
-    <div className="absolute bottom-5 left-1/2 z-[600] w-[min(92%,950px)] -translate-x-1/2 rounded-2xl border border-[#d8cbb1] bg-white px-4 pb-2 pt-2 shadow-[0_20px_55px_rgba(61,74,80,0.22)] backdrop-blur-xl transition-all duration-300">
+    <div className="absolute bottom-0 left-1/2 z-[600] w-[100%] border-t border-[#d8cbb1] -translate-x-1/2 bg-white px-4 pb-8 pt-4 shadow-2xl shadow-slate-950/20 backdrop-blur-xl transition-all duration-300">
       <div className="flex items-start justify-between gap-4">
         <p className="text-2xl font-semibold normalcase text-[var(--foreground)]">Metsaavastaja</p>
       </div>

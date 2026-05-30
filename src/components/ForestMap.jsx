@@ -21,7 +21,7 @@ function ForestMap({ year, onCountySelect }) {
     if (imageCacheRef.current.has(year)) {
       return imageCacheRef.current.get(year);
     }
-    const response = await fetch(`/images/${year}.webp`);
+    const response = await fetch(`/images/${year+1}.webp`);
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     imageCacheRef.current.set(year, url);
@@ -140,13 +140,14 @@ function ForestMap({ year, onCountySelect }) {
       zoom: 6.5,
       dragPan: false,
       keyboard: false,
+      scrollZoom: false
     });
 
     mapRef.current = map;
 
     map.on('load', () => {
       // Preload all years in the background
-      const YEARS = Array.from({ length: 2026 - 2009 + 1 }, (_, i) => 2009 + i);
+      const YEARS = Array.from({ length: 2025 - 2008 + 1 }, (_, i) => 2008 + i);
       YEARS.forEach((y) => loadImage(y));
 
       const resetView = () => {
@@ -159,7 +160,17 @@ function ForestMap({ year, onCountySelect }) {
           'rgba(0,0,0,0)',
         ]);
         map.setFilter('counties-hover', ['==', 'MKOOD', '']);
-        map.flyTo({ center: [24.75, 58.75], zoom: 6.5, duration: 500 });
+        map.flyTo({ 
+          center: [24.75, 58.75], 
+          zoom: 6.5, 
+          duration: 500,
+          padding: {
+            top: 40,
+            bottom: 120,
+            left: 40,
+            right: 40,
+          },
+        });
       };
 
       map.on('mousemove', 'counties-fill', (e) => {
@@ -168,6 +179,37 @@ function ForestMap({ year, onCountySelect }) {
           map.getCanvas().style.cursor = 'pointer';
         }
       });
+
+      containerRef.current.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        
+        // Scroll up = zoom out to full view
+        if (e.deltaY > 0) {
+          map.flyTo({ center: [24.75, 58.75], zoom: 6.5, duration: 500 });
+          return;
+        }
+
+        const rect = containerRef.current.getBoundingClientRect();
+        const point = new maplibregl.Point(
+          e.clientX - rect.left,
+          e.clientY - rect.top
+        );
+        const features = map.queryRenderedFeatures(point, { layers: ['counties-fill'] });
+        if (features.length === 0) return;
+
+        const feature = features[0];
+        const bounds = new maplibregl.LngLatBounds();
+        const coords =
+          feature.geometry.type === 'MultiPolygon'
+            ? feature.geometry.coordinates.flat(2)
+            : feature.geometry.coordinates.flat(1);
+        coords.forEach(([lng, lat]) => bounds.extend([lng, lat]));
+
+        map.fitBounds(bounds, {
+          padding: { top: 40, bottom: 120, left: 40, right: 40 },
+          duration: 500,
+        });
+      }, { passive: false });
 
       map.on('mouseleave', 'counties-fill', () => {
         map.setFilter('counties-hover', ['==', 'MKOOD', '']);
@@ -193,12 +235,12 @@ function ForestMap({ year, onCountySelect }) {
         selectedCountyRef.current = mkood;
         onCountySelect?.(mnimi);
 
-        map.setPaintProperty('counties-fill', 'fill-color', [
-          'case',
-          ['==', ['get', 'MKOOD'], mkood],
-          'rgba(0,0,0,0.15)',
-          'rgba(0,0,0,0)',
-        ]);
+        // map.setPaintProperty('counties-fill', 'fill-color', [
+        //   'case',
+        //   ['==', ['get', 'MKOOD'], mkood],
+        //   'rgba(0,0,0,0.15)',
+        //   'rgba(0,0,0,0)',
+        // ]);
 
         const bounds = new maplibregl.LngLatBounds();
         const coords =
@@ -206,7 +248,15 @@ function ForestMap({ year, onCountySelect }) {
             ? feature.geometry.coordinates.flat(2)
             : feature.geometry.coordinates.flat(1);
         coords.forEach(([lng, lat]) => bounds.extend([lng, lat]));
-        map.fitBounds(bounds, { padding: 80, duration: 500 });
+        map.fitBounds(bounds, {
+          padding: {
+            top: 40,
+            bottom: 120, // height of your timeline slider
+            left: 40,
+            right: 0,   // aside panel is outside the map container so no padding needed
+          },
+          duration: 500,
+        });
       });
     });
 

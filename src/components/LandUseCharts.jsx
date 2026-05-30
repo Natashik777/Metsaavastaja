@@ -111,7 +111,7 @@ const scaleX = (rotate = false) => ({
   ticks: {
     color: C.fg,
     font: { size: 10 },
-    ...(rotate ? { autoSkip: true, maxRotation: 45, minRotation: 45 } : {}),
+    ...(rotate ? { autoSkip: false, maxRotation: 45, minRotation: 45 } : {}),
   },
 });
 
@@ -157,7 +157,7 @@ function ChartShell({ title, children }) {
   return (
     <section className="rounded-xl border border-[#d8cbb1] bg-[white] p-4 shadow-[0_16px_40px_rgba(61,74,80,0.12)]">
       <div className="mb-3">
-        <h3 className="mt-1 text-[17px] font-semibold text-[#3D4A50]">{title}</h3>
+        <h3 className="mt-1 text-[20px] font-semibold text-[#3D4A50]">{title}</h3>
       </div>
       {children}
     </section>
@@ -204,7 +204,7 @@ function ForestAreaChart({ county, year }) {
           verticalLine: { index: currentIndex },
         },
         scales: {
-          x: scaleX(true),
+          x: scaleX(true, { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } }),
           y: scaleY({ callback: (value) => `${Math.round(value / 1000)}k` }),
         },
       },
@@ -322,7 +322,7 @@ function HarvestChart({ county, year }) {
 
   return (
     <ChartShell title="Raie ja uuendamine">
-      <div className="h-[220px]" style = {{marginBottom : "1.25rem"}}>
+      <div className="h-[220px]" style = {{marginBottom : "1.75rem"}}>
         <div style={{ display: "flex", gap: 16, marginBottom: "0.75rem" }}>
           {[["Raie", C.purple], ["Taasmetsastamine", C.green]].map(([label, color]) => (
             <span key={label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.fg }}>
@@ -414,7 +414,6 @@ function LandUseCharts({ selectedCounty, currentYear }) {
       .then(r => r.json())
       .then(setInfoContent);
   }, []);
-
 
   return (
     <aside className="relative z-20 flex w-full flex-col border-t border-[#d8cbb1] bg-[white] text-[#3D4A50] shadow-2xl shadow-slate-950/20 lg:h-screen lg:w-[550px] lg:min-w-[420px] lg:max-w-[600px] lg:border-l lg:border-t-0">
