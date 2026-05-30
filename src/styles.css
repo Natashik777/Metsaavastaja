@@ -179,7 +179,6 @@ body {
   stroke: var(--grey-1);
   stroke-width: 1px;
   cursor: pointer;
-  /* transition: fill 150ms ease; */
 }
 
 .county:hover {
@@ -188,7 +187,6 @@ body {
 
 .county--active {
   fill: transparent;
-  /* stroke: var(--foreground); */
   stroke-width: 1px;
 }
 
