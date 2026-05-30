@@ -403,6 +403,20 @@ function ForestCompositionChart({ county, year }) {
   );
 }
 
+function ImageChart({ year }) {
+  return (
+    <ChartShell title="Avastaja pilk">
+      <div className="overflow-hidden rounded-lg">
+        <img
+          src={`/images/views/${year+1}.webp`}
+          className="w-full object-cover"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      </div>
+    </ChartShell>
+  );
+}
+
 function LandUseCharts({ selectedCounty, currentYear }) {
   const titleRegion = getCountyDisplayName(selectedCounty);
   const [showInfo, setShowInfo] = useState(false);
@@ -467,6 +481,7 @@ function LandUseCharts({ selectedCounty, currentYear }) {
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <ForestAreaChart county={selectedCounty} year={currentYear} />
+        <ImageChart year={currentYear} />
         <ForestShareChart county={selectedCounty} year={currentYear} />
         <HarvestChart county={selectedCounty} year={currentYear} />
         <ForestCompositionChart county={selectedCounty} year={currentYear} />

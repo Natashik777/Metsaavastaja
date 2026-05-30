@@ -28,39 +28,33 @@ function ForestMap({ year, onCountySelect }) {
     return url;
   }
 
+  function getMapPadding() {
+    const w = containerRef.current.clientWidth;
+    const h = containerRef.current.clientHeight;
+    return {
+      top: h * 0.08,
+      bottom: h * 0.25,
+      left: w * 0.06,
+      right: w * 0.06,
+    };
+  }
+
   async function animateYears(years, onYearChange, delayMs = 800) {
     if (isAnimatingRef.current) return;
     isAnimatingRef.current = true;
-
     for (const year of years) {
       if (!isAnimatingRef.current) break;
-
-      // Preload the image first
       await loadImage(year);
-
-      // Switch to this year
       onYearChange(year);
-
-      // Wait for the map to finish rendering the new layer
       await new Promise((resolve) => {
         const map = mapRef.current;
         if (!map) return resolve();
-
-        const onIdle = () => {
-          map.off('idle', onIdle);
-          resolve();
-        };
-
+        const onIdle = () => { map.off('idle', onIdle); resolve(); };
         map.once('idle', onIdle);
-
-        // Fallback in case idle never fires
         setTimeout(resolve, 2000);
       });
-
-      // Hold on this year before moving to next
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
-
     isAnimatingRef.current = false;
   }
 
@@ -68,7 +62,6 @@ function ForestMap({ year, onCountySelect }) {
     isAnimatingRef.current = false;
   }
 
-  // Initialise map once
   useEffect(() => {
     const protocol = new Protocol();
     maplibregl.addProtocol('pmtiles', protocol.tile);
@@ -110,12 +103,7 @@ function ForestMap({ year, onCountySelect }) {
             type: 'fill',
             source: 'counties',
             paint: {
-              'fill-color': [
-                'case',
-                ['==', ['get', 'MKOOD'], selectedCountyRef.current ?? ''],
-                'rgba(0,0,0,0.15)',
-                'rgba(0,0,0,0)',
-              ],
+              'fill-color': 'rgba(255,255,255,0)',
             },
           },
           {
@@ -128,10 +116,13 @@ function ForestMap({ year, onCountySelect }) {
             },
           },
           {
-            id: 'counties-hover',
-            type: 'fill',
+            id: 'counties-hover-line',
+            type: 'line',
             source: 'counties',
-            paint: { 'fill-color': 'rgba(0,0,0,0.1)' },
+            paint: {
+              'line-color': '#004708',
+              'line-width': 2.5,
+            },
             filter: ['==', 'MKOOD', ''],
           },
         ],
@@ -140,123 +131,110 @@ function ForestMap({ year, onCountySelect }) {
       zoom: 7,
       dragPan: false,
       keyboard: false,
-      scrollZoom: false
+      scrollZoom: false,
     });
 
     mapRef.current = map;
 
     map.on('load', () => {
-      // Preload all years in the background
       const YEARS = Array.from({ length: 2025 - 2008 + 1 }, (_, i) => 2008 + i);
       YEARS.forEach((y) => loadImage(y));
 
       const resetView = () => {
         selectedCountyRef.current = null;
         onCountySelect?.(null);
-        map.setPaintProperty('counties-fill', 'fill-color', [
-          'case',
-          ['==', ['get', 'MKOOD'], ''],
-          'rgba(0,0,0,0.15)',
-          'rgba(0,0,0,0)',
-        ]);
-        map.setFilter('counties-hover', ['==', 'MKOOD', '']);
-        map.flyTo({ 
-          center: [24.75, 58.75], 
-          zoom: 6.5, 
+        map.setPaintProperty('counties-fill', 'fill-color', 'rgba(255,255,255,0)');
+        map.setFilter('counties-hover-line', ['==', 'MKOOD', '']);
+        map.flyTo({
+          center: [24.75, 58.75],
+          zoom: 7,
           duration: 500,
-          padding: {
-            top: 40,
-            bottom: 120,
-            left: 40,
-            right: 40,
-          },
+          padding: getMapPadding(),
         });
       };
 
+      function zoomToFeature(feature) {
+        const bounds = new maplibregl.LngLatBounds();
+        const coords =
+          feature.geometry.type === 'MultiPolygon'
+            ? feature.geometry.coordinates.flat(2)
+            : feature.geometry.coordinates.flat(1);
+        coords.forEach(([lng, lat]) => bounds.extend([lng, lat]));
+
+        map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+        const camera = map.cameraForBounds(bounds, { padding: getMapPadding() });
+
+        map.flyTo({
+          center: camera?.center ?? bounds.getCenter(),
+          zoom: camera?.zoom ?? 8,
+          duration: 800,
+          curve: 1,
+          speed: 0.6,
+        });
+      }
+
       map.on('mousemove', 'counties-fill', (e) => {
         if (e.features.length > 0) {
-          map.setFilter('counties-hover', ['==', 'MKOOD', e.features[0].properties.MKOOD]);
           map.getCanvas().style.cursor = 'pointer';
+          map.setFilter('counties-hover-line', ['==', 'MKOOD', e.features[0].properties.MKOOD]);
         }
+      });
+
+      map.on('mouseleave', 'counties-fill', () => {
+        map.getCanvas().style.cursor = '';
+        map.setFilter('counties-hover-line', ['==', 'MKOOD', '']);
       });
 
       containerRef.current.addEventListener('wheel', (e) => {
         e.preventDefault();
-        
-        // Scroll up = zoom out to full view
+        e.stopPropagation();
+
         if (e.deltaY > 0) {
-          map.flyTo({ center: [24.75, 58.4], zoom: 7, duration: 500 });
+          resetView();
           return;
         }
 
         const rect = containerRef.current.getBoundingClientRect();
-        const point = new maplibregl.Point(
-          e.clientX - rect.left,
-          e.clientY - rect.top
-        );
+        const point = new maplibregl.Point(e.clientX - rect.left, e.clientY - rect.top);
         const features = map.queryRenderedFeatures(point, { layers: ['counties-fill'] });
         if (features.length === 0) return;
 
         const feature = features[0];
-        const bounds = new maplibregl.LngLatBounds();
-        const coords =
-          feature.geometry.type === 'MultiPolygon'
-            ? feature.geometry.coordinates.flat(2)
-            : feature.geometry.coordinates.flat(1);
-        coords.forEach(([lng, lat]) => bounds.extend([lng, lat]));
+        const { MKOOD: mkood, MNIMI: mnimi } = feature.properties;
 
-        map.fitBounds(bounds, {
-          padding: { top: 40, bottom: 120, left: 40, right: 40 },
-          duration: 500,
-        });
+        selectedCountyRef.current = mkood;
+        onCountySelect?.(mnimi);
+        zoomToFeature(feature);
+
+        map.setPaintProperty('counties-fill', 'fill-color', [
+          'case',
+          ['==', ['get', 'MKOOD'], mkood],
+          'rgba(255,255,255,0)',
+          'rgba(255,255,255,0.6)',
+        ]);
       }, { passive: false });
-
-      map.on('mouseleave', 'counties-fill', () => {
-        map.setFilter('counties-hover', ['==', 'MKOOD', '']);
-        map.getCanvas().style.cursor = '';
-      });
 
       map.on('click', (e) => {
         const features = map.queryRenderedFeatures(e.point, { layers: ['counties-fill'] });
-
         if (features.length === 0) {
           resetView();
           return;
         }
-
         const feature = features[0];
         const { MKOOD: mkood, MNIMI: mnimi } = feature.properties;
-
         if (selectedCountyRef.current === mkood) {
           resetView();
           return;
         }
-
         selectedCountyRef.current = mkood;
         onCountySelect?.(mnimi);
-
-        // map.setPaintProperty('counties-fill', 'fill-color', [
-        //   'case',
-        //   ['==', ['get', 'MKOOD'], mkood],
-        //   'rgba(0,0,0,0.15)',
-        //   'rgba(0,0,0,0)',
-        // ]);
-
-        const bounds = new maplibregl.LngLatBounds();
-        const coords =
-          feature.geometry.type === 'MultiPolygon'
-            ? feature.geometry.coordinates.flat(2)
-            : feature.geometry.coordinates.flat(1);
-        coords.forEach(([lng, lat]) => bounds.extend([lng, lat]));
-        map.fitBounds(bounds, {
-          padding: {
-            top: 40,
-            bottom: 120, // height of your timeline slider
-            left: 40,
-            right: 0,   // aside panel is outside the map container so no padding needed
-          },
-          duration: 500,
-        });
+        zoomToFeature(feature);
+        map.setPaintProperty('counties-fill', 'fill-color', [
+          'case',
+          ['==', ['get', 'MKOOD'], mkood],
+          'rgba(255,255,255,0)',
+          'rgba(255,255,255,0.6)',
+        ]);
       });
     });
 
@@ -267,7 +245,6 @@ function ForestMap({ year, onCountySelect }) {
     };
   }, []);
 
-  // Swap forest image when year changes
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
@@ -276,14 +253,12 @@ function ForestMap({ year, onCountySelect }) {
     const newLayerId = `forest-layer-${year}`;
 
     loadImage(year).then((url) => {
-      // Image is already decoded in cache, add source and layer
       if (!map.getSource(newSourceId)) {
         map.addSource(newSourceId, {
           type: 'image',
           url,
           coordinates: FOREST_IMAGE_COORDS,
         });
-
         map.addLayer(
           {
             id: newLayerId,
@@ -294,8 +269,6 @@ function ForestMap({ year, onCountySelect }) {
           'counties-fill',
         );
       }
-
-      // Remove old layer after adding new one
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const { layerId, sourceId } = currentForestLayerRef.current;

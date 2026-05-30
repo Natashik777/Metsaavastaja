@@ -122,7 +122,7 @@ export const DATA_YEARS = [
     ...CARBON_ROWS.map((row) => row.year),
   ]),
 ].sort((a, b) => a - b);
-export const DEFAULT_DATA_YEAR = 2026;
+export const DEFAULT_DATA_YEAR = 2025;
 
 const COUNTY_ALIASES = new Map([
   ['Harju maakond', 'Harju'],
